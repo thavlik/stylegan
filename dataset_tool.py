@@ -403,33 +403,44 @@ def create_svhn(tfrecord_dir, svhn_dir):
 
 #----------------------------------------------------------------------------
 
-def create_horror(tfrecord_dir, image_dir, shuffle, resolution=256, max_images=None):
-    print('Loading horror data set from "%s"' % image_dir)
+def create_horror(tfrecord_dir, image_dir, output_dir, shuffle, resolution=256, max_images=None):
+    print('Loading horror data set from "%s", resizing to %d' % (image_dir, resolution))
     image_filenames = sorted(glob.glob(os.path.join(image_dir, '*')))
     if len(image_filenames) == 0:
         error('No input images found')
+    out_ext = ".jpg"
     with TFRecordExporter(tfrecord_dir, len(image_filenames)) as tfr:
         order = tfr.choose_shuffled_order() if shuffle else np.arange(len(image_filenames))
         for idx in range(order.size):
             try:
-                img = np.asarray(PIL.Image.open(image_filenames[order[idx]]))
-                channels = img.shape[2] if img.ndim == 3 else 1
-                if channels == 1:
-                    img = img[np.newaxis, :, :] # HW => CHW
-                else:
-                    img = img.transpose([2, 0, 1]) # HWC => CHW
+                input_path = image_filenames[order[idx]]
+                _, file = os.path.split(input_path)
+                fileName, _ = os.path.splitext(file)
+                output_path = os.path.join(output_dir, fileName + out_ext)
+                img = np.asarray(PIL.Image.open(input_path))
+                #channels = img.shape[2] if img.ndim == 3 else 1
+                #if channels == 1:
+                #    img = img[np.newaxis, :, :] # HW => CHW
+                #else:
+                #    img = img.transpose([2, 0, 1]) # HWC => CHW
                 # Resize the image
-                crop = np.min(img.shape[:2])
-                img = img[(img.shape[0] - crop) // 2 : (img.shape[0] + crop) // 2, (img.shape[1] - crop) // 2 : (img.shape[1] + crop) // 2]
+                crop = img.shape[0]
+                if img.shape[1] < crop:
+                    crop = img.shape[1]
+                print("Shape=%s, crop=%d,"%(img.shape,crop))
+                #print("Shape=(%d,%d,%d) Crop = %d"%(img.shape[0], img.shape[1], img.shape[2], crop))
                 img = PIL.Image.fromarray(img, 'RGB')
+                img.crop((0,0,crop,crop))
                 img = img.resize((resolution, resolution), PIL.Image.ANTIALIAS)
+                #img = img[(img.shape[0] - crop) // 2 : (img.shape[0] + crop) // 2, (img.shape[1] - crop) // 2 : (img.shape[1] + crop) // 2]
+                img.save(output_path)
                 img = np.asarray(img)
                 img = img.transpose([2, 0, 1]) # HWC => CHW
                 tfr.add_image(img)
+                if tfr.cur_images == max_images:
+                    break
             except:
                 print(sys.exc_info()[1])
-            if tfr.cur_images == max_images:
-                break
 
 #----------------------------------------------------------------------------
 
@@ -660,9 +671,10 @@ def execute_cmdline(argv):
                                             'create_horror datasets/horror ~/Downloads/horror')
     p.add_argument(     'tfrecord_dir',     help='New dataset directory to be created')
     p.add_argument(     'image_dir',        help='Directory containing the images')
+    p.add_argument(     'output_dir',        help='Directory containing the images')
     p.add_argument(     '--shuffle',        help='Randomize image order (default: 1)', type=int, default=1)
-    p.add_argument(     '--resolution',        help='The width and height of the converted images (default: 256)')
-    p.add_argument(     '--max_images',        help='Maximum number of images to convert')
+    p.add_argument(     '--resolution',        help='The width and height of the converted images (default: 256)', type=int, default=256)
+    p.add_argument(     '--max_images',        help='Maximum number of images to convert', type=int, default=None)
 
     p = add_command(    'create_from_hdf5', 'Create dataset from legacy HDF5 archive.',
                                             'create_from_hdf5 datasets/celebahq ~/downloads/celeba-hq-1024x1024.h5')

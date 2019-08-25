@@ -40,7 +40,7 @@ def main():
 
     # Save image.
     os.makedirs(config.result_dir, exist_ok=True)
-    png_filename = os.path.join(config.result_dir, 'example.png')
+    png_filename = os.path.join(config.result_dir, 'example-2.png')
     PIL.Image.fromarray(images[0], 'RGB').save(png_filename)
 
 if __name__ == "__main__":

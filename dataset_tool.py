@@ -403,6 +403,36 @@ def create_svhn(tfrecord_dir, svhn_dir):
 
 #----------------------------------------------------------------------------
 
+def create_horror(tfrecord_dir, image_dir, shuffle, resolution=256, max_images=None):
+    print('Loading horror data set from "%s"' % image_dir)
+    image_filenames = sorted(glob.glob(os.path.join(image_dir, '*')))
+    if len(image_filenames) == 0:
+        error('No input images found')
+    with TFRecordExporter(tfrecord_dir, len(image_filenames)) as tfr:
+        order = tfr.choose_shuffled_order() if shuffle else np.arange(len(image_filenames))
+        for idx in range(order.size):
+            try:
+                img = np.asarray(PIL.Image.open(image_filenames[order[idx]]))
+                channels = img.shape[2] if img.ndim == 3 else 1
+                if channels == 1:
+                    img = img[np.newaxis, :, :] # HW => CHW
+                else:
+                    img = img.transpose([2, 0, 1]) # HWC => CHW
+                # Resize the image
+                crop = np.min(img.shape[:2])
+                img = img[(img.shape[0] - crop) // 2 : (img.shape[0] + crop) // 2, (img.shape[1] - crop) // 2 : (img.shape[1] + crop) // 2]
+                img = PIL.Image.fromarray(img, 'RGB')
+                img = img.resize((resolution, resolution), PIL.Image.ANTIALIAS)
+                img = np.asarray(img)
+                img = img.transpose([2, 0, 1]) # HWC => CHW
+                tfr.add_image(img)
+            except:
+                print(sys.exc_info()[1])
+            if tfr.cur_images == max_images:
+                break
+
+#----------------------------------------------------------------------------
+
 def create_lsun(tfrecord_dir, lmdb_dir, resolution=256, max_images=None):
     print('Loading LSUN dataset from "%s"' % lmdb_dir)
     import lmdb # pip install lmdb # pylint: disable=import-error
@@ -625,6 +655,14 @@ def execute_cmdline(argv):
     p.add_argument(     'tfrecord_dir',     help='New dataset directory to be created')
     p.add_argument(     'image_dir',        help='Directory containing the images')
     p.add_argument(     '--shuffle',        help='Randomize image order (default: 1)', type=int, default=1)
+
+    p = add_command(    'create_horror', 'Create the horror dataset (ad-hoc)',
+                                            'create_horror datasets/horror ~/Downloads/horror')
+    p.add_argument(     'tfrecord_dir',     help='New dataset directory to be created')
+    p.add_argument(     'image_dir',        help='Directory containing the images')
+    p.add_argument(     '--shuffle',        help='Randomize image order (default: 1)', type=int, default=1)
+    p.add_argument(     '--resolution',        help='The width and height of the converted images (default: 256)')
+    p.add_argument(     '--max_images',        help='Maximum number of images to convert')
 
     p = add_command(    'create_from_hdf5', 'Create dataset from legacy HDF5 archive.',
                                             'create_from_hdf5 datasets/celebahq ~/downloads/celeba-hq-1024x1024.h5')

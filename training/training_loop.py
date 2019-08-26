@@ -137,7 +137,6 @@ def training_loop(
     resume_snapshot         = None,     # Snapshot index to resume training from, None = autodetect.
     resume_kimg             = 0.0,      # Assumed training progress at the beginning. Affects reporting and training schedule.
     resume_time             = 0.0):     # Assumed wallclock time at the beginning. Affects reporting.
-
     # Initialize dnnlib and TensorFlow.
     ctx = dnnlib.RunContext(submit_config, train)
     tflib.init_tf(tf_config)
@@ -213,6 +212,11 @@ def training_loop(
     cur_tick = 0
     tick_start_nimg = cur_nimg
     prev_lod = -1.0
+
+    # Override this values because I wasn't able to confirm what they were
+    image_snapshot_ticks = 1
+    network_snapshot_ticks = 10
+
     while cur_nimg < total_kimg * 1000:
         if ctx.should_stop(): break
 

@@ -5,4 +5,5 @@ docker run \
     -d \
     --gpus all \
     --mount type=bind,source="$(pwd)",target=/stylegan \
-    thavlik/stylegan
+    thavlik/stylegan \
+    python train.py

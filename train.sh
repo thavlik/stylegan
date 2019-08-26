@@ -7,3 +7,4 @@ docker run \
     --mount type=bind,source="$(pwd)",target=/stylegan \
     thavlik/stylegan \
     python train.py
+echo Launched
